@@ -6,7 +6,8 @@ const checkinSchema = new mongoose.Schema({
     required: true
   },
   employeeId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Employee',
     required: true
   },
   timestamp: {
@@ -14,22 +15,13 @@ const checkinSchema = new mongoose.Schema({
     required: true,
     default: Date.now
   },
-  topic: {
+  faceId: {
     type: String,
-    required: true
+    required: false
   },
-  message: {
+  checkinStatus: {
     type: String,
-    required: true
-  },
-  processed: {
-    type: Boolean,
-    required: true,
-    default: false
-  },
-  processedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User' 
+    required: false
   }
 }, {
   timestamps: true

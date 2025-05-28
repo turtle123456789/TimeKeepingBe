@@ -1,4 +1,8 @@
 const employeeService = require('../services/employee.service');
+const fs = require('fs');
+const path = require('path');
+
+const UPLOAD_DIR = path.join(__dirname, '../uploads/faces'); // Define upload directory
 
 const employeeController = {
   registerEmployee: async (req, res) => {
@@ -46,7 +50,7 @@ const employeeController = {
         return res.status(409).json({ message: 'Invalid field type: fullName must be a string if provided.' });
       }
       if (updateData.employeeId) {
-           return res.status(400).json({ message: 'employeeId cannot be updated via this endpoint.' });
+        return res.status(400).json({ message: 'employeeId cannot be updated via this endpoint.' });
       }
 
       const updatedEmployee = await employeeService.updateEmployee(employeeId, updateData);
@@ -86,7 +90,83 @@ const employeeController = {
       console.error('Error in employeeController.getAllEmployees:', error);
       res.status(500).json({ message: error.message });
     }
-  }
+  },
+
+  // Hàm xử lý dữ liệu sự kiện từ thiết bị (tái sử dụng bởi worker và HTTP)
+  processDeviceEventData: async (eventData) => {
+    if (!eventData.deviceID || !eventData.status || !eventData.employeeId || !eventData.timestamp || !eventData.faceBase64) {
+      throw new Error('Missing required fields.');
+    }
+
+    const { deviceID, status, employeeId, timestamp, faceBase64 } = eventData;
+
+    // Validate satus
+    const validStatuses = ['đăng ký', 'cập nhật', 'checkin'];
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid status: ${status}. Valid statuses are ${validStatuses.join(', ')}.`);
+    }
+
+    let imagePath = "";
+
+    return { deviceID, status, employeeId, timestamp, faceBase64, imagePath };
+  },
+
+  handleCheckinSave: async (processedData) => {
+    try {
+      const faceIdForCheckin = processedData.faceBase64 || 'N/A'; 
+
+      const checkinRecord = await employeeService.recordCheckin(
+        processedData.deviceID,
+        processedData.employeeId,
+        processedData.timestamp,
+        faceIdForCheckin, 
+        processedData.status 
+      );
+      console.log('Check-in record created:', checkinRecord);
+      return checkinRecord;
+    } catch (error) {
+      console.error('Error saving check-in record:', error);
+      throw error; 
+    }
+  },
+
+  handleRegistrationSave: async (processedData) => {
+    try {
+      const faceIdForCheckin = processedData.faceBase64 || 'N/A';
+
+      const checkinRecord = await employeeService.recordCheckin(
+        processedData.deviceID,
+        processedData.employeeId, 
+        processedData.timestamp,
+        faceIdForCheckin,
+        processedData.status 
+      );
+      console.log('Check-in record created:', checkinRecord);
+      return checkinRecord;
+    } catch (error) {
+      console.error('Error saving check-in record:', error);
+      throw error; 
+    }
+  },
+
+  handleUpdateSave: async (processedData) => {
+    try {
+      const faceIdForCheckin = processedData.faceBase64 || 'N/A';
+
+      const checkinRecord = await employeeService.recordCheckin(
+        processedData.deviceID,
+        processedData.employeeId, 
+        processedData.timestamp,
+        faceIdForCheckin,
+        processedData.status 
+      );
+      console.log('Check-in record created:', checkinRecord);
+      return checkinRecord;
+    } catch (error) {
+      console.error('Error saving check-in record:', error);
+      throw error; 
+    }
+  },
 };
 
 module.exports = employeeController; 

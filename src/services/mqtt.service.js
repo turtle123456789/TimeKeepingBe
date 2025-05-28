@@ -1,16 +1,17 @@
 const mqtt = require('mqtt');
 const config = require('../config/mqtt.config');
+const employeeController = require('../controllers/employee.controller'); // Import employeeController
+const employeeService = require('../services/employee.service'); // Import employeeService
 
 class MQTTService {
   constructor(io) {
-    this.io = io;
+    this.io = io; // Socket.IO instance
     this.client = null;
   }
 
   connect() {
     const options = {
       keepalive: config.mqtt.keepalive,
-      // Add authentication if credentials are provided
       ...(process.env.MQTT_USERNAME && process.env.MQTT_PASSWORD && {
         username: process.env.MQTT_USERNAME,
         password: process.env.MQTT_PASSWORD
@@ -21,7 +22,7 @@ class MQTTService {
 
     this.client.on('connect', () => {
       console.log('Connected to MQTT broker');
-      
+
       this.subscribe();
     });
 
@@ -39,19 +40,69 @@ class MQTTService {
     });
   }
 
-  handleMessage(topic, message) {
+  async handleMessage(topic, message) {
     try {
-      // const data = {
-      //   topic,
-      //   message: message.toString(),
-      //   timestamp: new Date().toISOString()
-      // };
-      
-      // this.io.emit('mqtt-message', data);
-      // console.log('Forwarded MQTT message:', data);
-      console.log("received data ---> topic = ", topic, "message = ", message.toString());
+      const messageString = message.toString();
+      console.log("Received MQTT message ---> topic = ", topic, "message = ", messageString);
+
+      const eventData = JSON.parse(messageString);
+
+      const processedData = await employeeController.processDeviceEventData(eventData);
+
+      switch (processedData.status) {
+        case 'đăng ký':
+           employeeController.handleRegistrationSave(processedData)
+             .then(result => console.log('MQTT: Employee registration handling called.', result))
+             .catch(error => console.error('Error in employee registration handling:', error));
+          break;
+        case 'cập nhật':
+           employeeController.handleUpdateSave(processedData)
+              .then(result => console.log('MQTT: Employee update handling called.', result))
+              .catch(error => console.error('Error in employee update handling:', error));
+          break;
+        case 'checkin':
+          // Luồng 1 (Async): Lưu bản ghi check-in vào database
+          employeeController.handleCheckinSave(processedData)
+            .then(checkinRecord => console.log('Check-in record saved successfully:', checkinRecord))
+            .catch(error => console.error('Error saving check-in record:', error));
+
+          // Luồng 2 (Async): Lấy thông tin employee và gửi lên frontend
+          (async () => {
+              try {
+                  // Sử dụng processedData.employeeId string để tìm employee
+                  const employee = await employeeService.getEmployeeByEmployeeIdString(processedData.employeeId);
+
+                  if (employee) {
+                      const frontendData = {
+                          employeeId: employee.employeeId, 
+                          fullName: employee.fullName, 
+                          position: employee.position, 
+                          department: employee.department, 
+                          status: processedData.status, 
+                          timestamp: processedData.timestamp 
+                      };
+                      // Gửi thông tin lên frontend qua Socket.IO
+                      if (this.io) {
+                          this.io.emit('checkin-event', frontendData);
+                          console.log('Sent check-in data to frontend:', frontendData);
+                      } else {
+                          console.log('Socket.IO instance not available, cannot emit checkin data.');
+                      }
+
+                  } else {
+                      console.log(`Employee with employeeId ${processedData.employeeId} not found for frontend update.`);
+                  }
+              } catch (error) {
+                   console.log('MQTT Service - Error in frontend emission flow:', error);
+              }
+          })();
+          break;
+        default:
+          console.error('MQTT: Unexpected status after processing:', processedData.status);
+      }
+
     } catch (error) {
-      console.error('Error processing MQTT message:', error);
+      console.error('MQTT Service - Error processing message (parsing or initial processing):', error);
     }
   }
 
