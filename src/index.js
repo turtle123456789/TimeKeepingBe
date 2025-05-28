@@ -6,6 +6,7 @@ const config = require('./config/mqtt.config');
 const MQTTService = require('./services/mqtt.service');
 const SocketController = require('./controllers/socket.controller');
 const employeeRoutes = require('./routes/employee.routes'); // Import employee routes
+const cors = require('cors'); // Import cors for handling cross-origin requests
 
 // Initialize Express app
 const app = express();
@@ -41,7 +42,14 @@ mqttService.connect();
 // Initialize Socket.IO controller
 socketController.initialize();
 
-// Start the server
-server.listen(config.server.port, () => {
-  console.log(`Server is running on port ${config.server.port}`);
-}); 
+// Port mà Socket.IO server sẽ lắng nghe
+const SOCKET_IO_PORT = 3001;
+
+// Start the HTTP server (which Socket.IO is bound to) on port 3001
+server.listen(SOCKET_IO_PORT, () => {
+  console.log(`Socket.IO server is listening on port ${SOCKET_IO_PORT}`);
+});
+
+
+// Export the Socket.IO instance if needed in other modules (like mqtt.service.js)
+module.exports = { app, server, io }; 

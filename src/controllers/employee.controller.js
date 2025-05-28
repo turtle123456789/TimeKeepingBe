@@ -94,39 +94,32 @@ const employeeController = {
 
   // Hàm xử lý dữ liệu sự kiện từ thiết bị (tái sử dụng bởi worker và HTTP)
   processDeviceEventData: async (eventData) => {
-    if (!eventData.deviceID || !eventData.status || !eventData.employeeId || !eventData.timestamp || !eventData.faceBase64) {
+    if (!eventData.deviceId || !eventData.employeeName || !eventData.employeeId || !eventData.timestamp || !eventData.faceBase64) {
       throw new Error('Missing required fields.');
     }
 
-    const { deviceID, status, employeeId, timestamp, faceBase64 } = eventData;
-
-    // Validate satus
-    const validStatuses = ['đăng ký', 'cập nhật', 'checkin'];
-    if (!validStatuses.includes(status)) {
-      throw new Error(`Invalid status: ${status}. Valid statuses are ${validStatuses.join(', ')}.`);
-    }
-
+    const { deviceId, employeeName, employeeId, timestamp, faceBase64 } = eventData;
     let imagePath = "";
 
-    return { deviceID, status, employeeId, timestamp, faceBase64, imagePath };
+    return { deviceId, employeeName, employeeId, timestamp, faceBase64, imagePath };
   },
 
   handleCheckinSave: async (processedData) => {
     try {
-      const faceIdForCheckin = processedData.faceBase64 || 'N/A'; 
+      const faceIdForCheckin = processedData.faceBase64 || 'N/A';
 
       const checkinRecord = await employeeService.recordCheckin(
         processedData.deviceID,
         processedData.employeeId,
         processedData.timestamp,
-        faceIdForCheckin, 
-        processedData.status 
+        faceIdForCheckin,
+        processedData.status || "check in"
       );
       console.log('Check-in record created:', checkinRecord);
       return checkinRecord;
     } catch (error) {
       console.error('Error saving check-in record:', error);
-      throw error; 
+      throw error;
     }
   },
 
@@ -136,16 +129,16 @@ const employeeController = {
 
       const checkinRecord = await employeeService.recordCheckin(
         processedData.deviceID,
-        processedData.employeeId, 
+        processedData.employeeId,
         processedData.timestamp,
         faceIdForCheckin,
-        processedData.status 
+        processedData.status || "đăng ký"
       );
       console.log('Check-in record created:', checkinRecord);
       return checkinRecord;
     } catch (error) {
       console.error('Error saving check-in record:', error);
-      throw error; 
+      throw error;
     }
   },
 
@@ -155,16 +148,16 @@ const employeeController = {
 
       const checkinRecord = await employeeService.recordCheckin(
         processedData.deviceID,
-        processedData.employeeId, 
+        processedData.employeeId,
         processedData.timestamp,
         faceIdForCheckin,
-        processedData.status 
+        processedData.status || "cập nhật"
       );
       console.log('Check-in record created:', checkinRecord);
       return checkinRecord;
     } catch (error) {
       console.error('Error saving check-in record:', error);
-      throw error; 
+      throw error;
     }
   },
 };
