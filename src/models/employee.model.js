@@ -11,10 +11,14 @@ const employeeSchema = new mongoose.Schema({
     required: true
   },
   department: {
-    type: String
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Department',
+    required: false
   },
   position: {
-    type: String
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Position',
+    required: false
   },
   shift: {
     type: String

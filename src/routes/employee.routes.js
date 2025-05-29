@@ -14,4 +14,10 @@ router.delete('/:employeeId', employeeController.deleteEmployee);
 // GET /api/employees - Get all employees
 router.get('/', employeeController.getAllEmployees);
 
-module.exports = router; 
+// GET /api/employees/late - Get late employees
+router.get('/late', employeeController.getLateEmployees);
+
+// GET /api/employees/early - Get early leave employees
+router.get('/early', employeeController.getEarlyLeaveEmployees);
+
+module.exports = router;

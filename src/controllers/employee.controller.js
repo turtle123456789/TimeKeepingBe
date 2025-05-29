@@ -160,6 +160,38 @@ const employeeController = {
       throw error;
     }
   },
+
+  getLateEmployees: async (req, res) => {
+    try {
+      const date = req.query.date; // Optional date parameter
+      const departmentId = req.query.departmentId; // Optional department parameter
+      const result = await employeeService.getLateEmployees(date, departmentId);
+      
+      res.status(result.status).json({
+        message: result.message,
+        data: result.data
+      });
+    } catch (error) {
+      console.error('Error in employeeController.getLateEmployees:', error);
+      res.status(500).json({ message: error.message });
+    }
+  },
+
+  getEarlyLeaveEmployees: async (req, res) => {
+    try {
+      const date = req.query.date; // Optional date parameter
+      const departmentId = req.query.departmentId; // Optional department parameter
+      const result = await employeeService.getEarlyLeaveEmployees(date, departmentId);
+      
+      res.status(result.status).json({
+        message: result.message,
+        data: result.data
+      });
+    } catch (error) {
+      console.error('Error in employeeController.getEarlyLeaveEmployees:', error);
+      res.status(500).json({ message: error.message });
+    }
+  },
 };
 
 module.exports = employeeController; 
