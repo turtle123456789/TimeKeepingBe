@@ -24,7 +24,7 @@ const io = new Server(server, {
 });
 
 // Connect to MongoDB
-const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/mqtt_socket_db';
+const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/time_keeping';
 mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));

@@ -6,6 +6,23 @@ const employeeService = {
     try {
       const newEmployee = new Employee(employeeData);
       await newEmployee.save();
+
+      // Update any existing check-in records for this employee
+      await Checkin.updateMany(
+        { 
+          $or: [
+            { employeeId: null },
+            { employeeId: { $exists: false } }
+          ]
+        },
+        { 
+          $set: { 
+            employeeId: newEmployee._id,
+            checkinStatus: 'check in'
+          }
+        }
+      );
+
       return newEmployee;
     } catch (error) {
       throw new Error('Could not create employee: ' + error.message);
@@ -46,14 +63,15 @@ const employeeService = {
   recordCheckin: async (deviceID, employeeIdString, timestamp, faceId, checkinStatus) => {
     try {
       const employee = await Employee.findOne({ employeeId: employeeIdString });
+      let employeeId = null;
 
-      if (!employee) {
-        throw new Error(`Employee with employeeId ${employeeIdString} not found.`);
+      if (employee) {
+        employeeId = employee._id;
       }
 
       const newCheckin = new Checkin({
         deviceId: deviceID,
-        employeeId: employee._id,
+        employeeId: employeeId,
         timestamp: new Date(timestamp),
         faceId: faceId,
         checkinStatus: checkinStatus

@@ -109,7 +109,7 @@ const employeeController = {
       const faceIdForCheckin = processedData.faceBase64 || 'N/A';
 
       const checkinRecord = await employeeService.recordCheckin(
-        processedData.deviceID,
+        processedData.deviceId,
         processedData.employeeId,
         processedData.timestamp,
         faceIdForCheckin,
@@ -128,7 +128,7 @@ const employeeController = {
       const faceIdForCheckin = processedData.faceBase64 || 'N/A';
 
       const checkinRecord = await employeeService.recordCheckin(
-        processedData.deviceID,
+        processedData.deviceId,
         processedData.employeeId,
         processedData.timestamp,
         faceIdForCheckin,
@@ -147,7 +147,7 @@ const employeeController = {
       const faceIdForCheckin = processedData.faceBase64 || 'N/A';
 
       const checkinRecord = await employeeService.recordCheckin(
-        processedData.deviceID,
+        processedData.deviceId,
         processedData.employeeId,
         processedData.timestamp,
         faceIdForCheckin,

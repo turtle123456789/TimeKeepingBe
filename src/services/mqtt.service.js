@@ -49,7 +49,7 @@ class MQTTService {
       console.log("evenData = ", eventData);
 
       const processedData = await employeeController.processDeviceEventData(eventData);
-      processedData.status = "check-in"
+      processedData.status = "checkin"
       switch (processedData.status) {
         case 'đăng ký':
           employeeController.handleRegistrationSave(processedData)
@@ -99,8 +99,8 @@ class MQTTService {
             const frontendData = {
               employeeId: processedData.employeeId,
               fullName: processedData.employeeName,
-              position: "test",
-              department: "test",
+              position: "Người ngoài công ty",
+              department: "Người ngoài công ty",
               status: processedData.status,
               timestamp: processedData.timestamp,
 
