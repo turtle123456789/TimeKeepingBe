@@ -2,7 +2,7 @@ const employeeService = require('../services/employee.service');
 const fs = require('fs');
 const path = require('path');
 
-const UPLOAD_DIR = path.join(__dirname, '../uploads/faces'); // Define upload directory
+const UPLOAD_DIR = path.join(__dirname, '../uploads/faces'); 
 
 const employeeController = {
   registerEmployee: async (req, res) => {
@@ -163,8 +163,8 @@ const employeeController = {
 
   getLateEmployees: async (req, res) => {
     try {
-      const date = req.query.date; // Optional date parameter
-      const departmentId = req.query.departmentId; // Optional department parameter
+      const date = req.query.date; 
+      const departmentId = req.query.departmentId; 
       const result = await employeeService.getLateEmployees(date, departmentId);
       
       res.status(result.status).json({
@@ -179,8 +179,8 @@ const employeeController = {
 
   getEarlyLeaveEmployees: async (req, res) => {
     try {
-      const date = req.query.date; // Optional date parameter
-      const departmentId = req.query.departmentId; // Optional department parameter
+      const date = req.query.date; 
+      const departmentId = req.query.departmentId; 
       const result = await employeeService.getEarlyLeaveEmployees(date, departmentId);
       
       res.status(result.status).json({

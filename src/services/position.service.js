@@ -1,10 +1,8 @@
 const Position = require('../models/position.model');
 
 const positionService = {
-  // Get all positions and populate department name
   getAllPositions: async () => {
     try {
-      // Use populate to get department details
       const positions = await Position.find({}).populate('department', 'name'); // Populate 'department' field, only select 'name'
       return positions;
     } catch (error) {
@@ -12,10 +10,8 @@ const positionService = {
     }
   },
 
-  // Update a position's name
   updatePosition: async (positionId, updateData) => {
     try {
-      // Ensure only the 'name' field can be updated
       const allowedUpdates = ['name'];
       const updates = Object.keys(updateData);
       const isValidOperation = updates.every((update) => allowedUpdates.includes(update));
@@ -24,7 +20,6 @@ const positionService = {
           throw new Error('Invalid updates!');
       }
 
-      // Find and update the position by ID
       const updatedPosition = await Position.findByIdAndUpdate(positionId, { name: updateData.name }, { new: true });
       return updatedPosition;
     } catch (error) {
@@ -32,7 +27,6 @@ const positionService = {
     }
   },
 
-  // Delete a position
   deletePosition: async (positionId) => {
     try {
       const deletedPosition = await Position.findByIdAndDelete(positionId);
@@ -42,7 +36,6 @@ const positionService = {
     }
   },
 
-  // Get positions by department ID and populate department name
   getPositionsByDepartment: async (departmentId) => {
     try {
       const positions = await Position.find({ department: departmentId }).populate('department', 'name');
