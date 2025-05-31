@@ -76,6 +76,16 @@ const departmentService = {
     } catch (error) {
       throw new Error('Could not retrieve department: ' + error.message);
     }
+  },
+
+  getDepartmentByName: async (name) => {
+    try {
+      const department = await Department.findOne({ name: name });
+      return department;
+    } catch (error) {
+      console.error('Error in getDepartmentByName:', error);
+      throw error;
+    }
   }
 };
 

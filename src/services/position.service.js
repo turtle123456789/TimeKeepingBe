@@ -1,12 +1,47 @@
 const Position = require('../models/position.model');
 
 const positionService = {
+  getPositionByName: async (name, department) => {
+    try {
+      const position = await Position.findOne({ 
+        name: name,
+        department : department
+      });
+      return position;
+    } catch (error) {
+      console.error('Error in getPositionByName:', error);
+      throw error;
+    }
+  },
+
   getAllPositions: async () => {
     try {
       const positions = await Position.find({}).populate('department', 'name'); // Populate 'department' field, only select 'name'
       return positions;
     } catch (error) {
-      throw new Error('Could not retrieve positions: ' + error.message);
+      console.error('Error in getAllPositions:', error);
+      throw error;
+    }
+  },
+
+  getPositionsByDepartment: async (departmentId) => {
+    try {
+      const positions = await Position.find({ department: departmentId }).populate('department', 'name');
+      return positions;
+    } catch (error) {
+      console.error('Error in getPositionsByDepartment:', error);
+      throw error;
+    }
+  },
+
+  createPosition: async (positionData) => {
+    try {
+      const newPosition = new Position(positionData);
+      await newPosition.save();
+      return newPosition;
+    } catch (error) {
+      console.error('Error in createPosition:', error);
+      throw error;
     }
   },
 
@@ -23,7 +58,8 @@ const positionService = {
       const updatedPosition = await Position.findByIdAndUpdate(positionId, { name: updateData.name }, { new: true });
       return updatedPosition;
     } catch (error) {
-      throw new Error('Could not update position: ' + error.message);
+      console.error('Error in updatePosition:', error);
+      throw error;
     }
   },
 
@@ -32,16 +68,8 @@ const positionService = {
       const deletedPosition = await Position.findByIdAndDelete(positionId);
       return deletedPosition;
     } catch (error) {
-      throw new Error('Could not delete position: ' + error.message);
-    }
-  },
-
-  getPositionsByDepartment: async (departmentId) => {
-    try {
-      const positions = await Position.find({ department: departmentId }).populate('department', 'name');
-      return positions;
-    } catch (error) {
-      throw new Error('Could not retrieve positions for department: ' + error.message);
+      console.error('Error in deletePosition:', error);
+      throw error;
     }
   }
 };

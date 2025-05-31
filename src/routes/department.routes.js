@@ -8,10 +8,10 @@ router.get('/', departmentController.getAllDepartments);
 // POST /api/departments -
 router.post('/', departmentController.createDepartment);
 
-// PUT /api/departments/:departmentId - 
+// Update department
 router.put('/:departmentId', departmentController.updateDepartment);
 
-// DELETE /api/departments/:departmentId - 
+// Delete department
 router.delete('/:departmentId', departmentController.deleteDepartment);
 
 module.exports = router; 

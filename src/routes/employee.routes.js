@@ -20,4 +20,7 @@ router.get('/late', employeeController.getLateEmployees);
 // GET /api/employees/early - Get early leave employees
 router.get('/early', employeeController.getEarlyLeaveEmployees);
 
+// GET /api/employees/department - Get employees by department and date
+router.get('/department', employeeController.getEmployeesByDepartmentAndDate);
+
 module.exports = router;

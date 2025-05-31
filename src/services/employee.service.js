@@ -4,160 +4,15 @@ const Department = require('../models/department.model');
 const Position = require('../models/position.model');
 
 const employeeService = {
-  createEmployee: async (employeeData) => {
+  getEmployeeByEmployeeId: async (employeeId) => {
     try {
-      // Validate department and position if provided
-      if (employeeData.department) {
-        const department = await Department.findById(employeeData.department);
-        if (!department) {
-          return {
-            status: 404,
-            message: 'Department not found',
-            data: null
-          };
-        }
-      }
-
-      if (employeeData.position) {
-        const position = await Position.findById(employeeData.position);
-        if (!position) {
-          return {
-            status: 404,
-            message: 'Position not found',
-            data: null
-          };
-        }
-      }
-
-      // Check if employeeId already exists
-      const existingEmployee = await Employee.findOne({ employeeId: employeeData.employeeId });
-      if (existingEmployee) {
-        return {
-          status: 409,
-          message: 'Employee ID already exists',
-          data: null
-        };
-      }
-
-      const newEmployee = new Employee(employeeData);
-      await newEmployee.save();
-
-      // Update any existing check-in records for this employee
-      await Checkin.updateMany(
-        { 
-          $or: [
-            { employeeId: null },
-            { employeeId: { $exists: false } }
-          ]
-        },
-        { 
-          $set: { 
-            employeeId: newEmployee._id,
-            checkinStatus: 'check in'
-          }
-        }
-      );
-
-      // Populate department and position before returning
-      const populatedEmployee = await Employee.findById(newEmployee._id)
+      const employee = await Employee.findOne({ employeeId })
         .populate('department', 'name')
         .populate('position', 'name');
-
-      return {
-        status: 201,
-        message: 'Employee created successfully',
-        data: populatedEmployee
-      };
+      return employee;
     } catch (error) {
-      return {
-        status: 500,
-        message: 'Could not create employee: ' + error.message,
-        data: null
-      };
-    }
-  },
-
-  updateEmployee: async (employeeId, updateData) => {
-    try {
-      // Check if employee exists
-      const existingEmployee = await Employee.findOne({ employeeId: employeeId });
-      if (!existingEmployee) {
-        return {
-          status: 404,
-          message: 'Employee not found',
-          data: null
-        };
-      }
-
-      // Validate department and position if provided
-      if (updateData.department) {
-        const department = await Department.findById(updateData.department);
-        if (!department) {
-          return {
-            status: 404,
-            message: 'Department not found',
-            data: null
-          };
-        }
-      }
-
-      if (updateData.position) {
-        const position = await Position.findById(updateData.position);
-        if (!position) {
-          return {
-            status: 404,
-            message: 'Position not found',
-            data: null
-          };
-        }
-      }
-
-      const updatedEmployee = await Employee.findOneAndUpdate(
-        { employeeId: employeeId },
-        updateData,
-        { new: true }
-      ).populate('department', 'name')
-       .populate('position', 'name');
-
-      return {
-        status: 200,
-        message: 'Employee updated successfully',
-        data: updatedEmployee
-      };
-    } catch (error) {
-      return {
-        status: 500,
-        message: 'Could not update employee: ' + error.message,
-        data: null
-      };
-    }
-  },
-
-  deleteEmployee: async (employeeId) => {
-    try {
-      const deletedEmployee = await Employee.findOneAndDelete({ employeeId: employeeId })
-        .populate('department', 'name')
-        .populate('position', 'name');
-
-      if (!deletedEmployee) {
-        return {
-          status: 404,
-          message: 'Employee not found',
-          data: null
-        };
-      }
-
-      return {
-        status: 200,
-        message: 'Employee deleted successfully',
-        data: deletedEmployee
-      };
-    } catch (error) {
-      return {
-        status: 500,
-        message: 'Could not delete employee: ' + error.message,
-        data: null
-      };
+      console.error('Error in getEmployeeByEmployeeId:', error);
+      throw error;
     }
   },
 
@@ -166,18 +21,51 @@ const employeeService = {
       const employees = await Employee.find()
         .populate('department', 'name')
         .populate('position', 'name');
-
-      return {
-        status: 200,
-        message: 'Employees retrieved successfully',
-        data: employees
-      };
+      return employees;
     } catch (error) {
-      return {
-        status: 500,
-        message: 'Could not retrieve employees: ' + error.message,
-        data: null
-      };
+      console.error('Error in getAllEmployees:', error);
+      throw error;
+    }
+  },
+
+  createEmployee: async (employeeData) => {
+    try {
+      const newEmployee = new Employee(employeeData);
+      await newEmployee.save();
+      return newEmployee.populate([
+        { path: 'department', select: 'name' },
+        { path: 'position', select: 'name' }
+      ]);
+    } catch (error) {
+      console.error('Error in createEmployee:', error);
+      throw error;
+    }
+  },
+
+  updateEmployee: async (employeeId, updateData) => {
+    try {
+      const updatedEmployee = await Employee.findOneAndUpdate(
+        { employeeId },
+        updateData,
+        { new: true }
+      ).populate([
+        { path: 'department', select: 'name' },
+        { path: 'position', select: 'name' }
+      ]);
+      return updatedEmployee;
+    } catch (error) {
+      console.error('Error in updateEmployee:', error);
+      throw error;
+    }
+  },
+
+  deleteEmployee: async (employeeId) => {
+    try {
+      const deletedEmployee = await Employee.findOneAndDelete({ employeeId });
+      return deletedEmployee;
+    } catch (error) {
+      console.error('Error in deleteEmployee:', error);
+      throw error;
     }
   },
 
@@ -571,6 +459,101 @@ const employeeService = {
         message: 'Could not retrieve check-outs: ' + error.message,
         data: null
       };
+    }
+  },
+
+  updateEmployeeAvatar: async (employeeId, imageAvatar) => {
+    try {
+      const updatedEmployee = await Employee.findOneAndUpdate(
+        { employeeId },
+        { imageAvatar },
+        { new: true }
+      ).populate([
+        { path: 'department', select: 'name' },
+        { path: 'position', select: 'name' }
+      ]);
+      return updatedEmployee;
+    } catch (error) {
+      console.error('Error in updateEmployeeAvatar:', error);
+      throw error;
+    }
+  },
+
+  getEmployeesByDepartmentAndDate: async (departmentId, startDate, endDate) => {
+    try {
+      // Set end of day for endDate
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Convert dates to start of day for startDate
+      const startOfDay = new Date(startDate);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      console.log('Start Date:', startOfDay);
+      console.log('End Date:', endOfDay);
+
+      // Build query conditions
+      const query = {};
+
+      // Add department filter if provided
+      if (departmentId) {
+        const department = await Department.findById(departmentId);
+        if (!department) {
+          return {
+            status: 404,
+            message: 'Department not found',
+            data: null
+          };
+        }
+        query.department = departmentId;
+      }
+
+      console.log('Query conditions:', JSON.stringify(query, null, 2));
+
+      // Get employees with populated department and position
+      const allEmployees = await Employee.find(query)
+        .populate('department', 'name')
+        .populate('position', 'name')
+        .sort({ registrationDate: -1 });
+
+      // Filter employees by date range
+      const employees = allEmployees.filter(emp => {
+        const regDate = new Date(emp.registrationDate);
+        return regDate >= startOfDay && regDate <= endOfDay;
+      });
+
+      console.log('Total employees before date filter:', allEmployees.length);
+      console.log('Found employees after date filter:', employees.length);
+
+      // Format response
+      const formattedEmployees = employees.map(emp => ({
+        employeeId: emp.employeeId,
+        fullName: emp.fullName,
+        email: emp.email,
+        phone: emp.phone,
+        department: emp.department ? emp.department.name : 'N/A',
+        position: emp.position ? emp.position.name : 'N/A',
+        registrationDate: emp.registrationDate,
+        status: emp.status,
+        imageAvatar: emp.imageAvatar,
+        faceImage: emp.faceImage,
+        image34: emp.image34,
+        createdAt: emp.createdAt,
+        updatedAt: emp.updatedAt
+      }));
+
+      return {
+        totalEmployees: employees.length,
+        dateRange: {
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0]
+        },
+        department: departmentId ? (await Department.findById(departmentId)).name : 'All Departments',
+        employees: formattedEmployees
+      };
+    } catch (error) {
+      console.error('Error in getEmployeesByDepartmentAndDate:', error);
+      throw error;
     }
   }
 };

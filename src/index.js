@@ -6,6 +6,8 @@ const config = require('./config/mqtt.config');
 const MQTTService = require('./services/mqtt.service');
 const SocketController = require('./controllers/socket.controller');
 const employeeRoutes = require('./routes/employee.routes'); // Import employee routes
+const positionRoutes = require('./routes/position.routes'); // Import position routes
+const departmentRoutes = require('./routes/department.routes'); // Import department routes
 const cors = require('cors'); // Import cors for handling cross-origin requests
 
 // Initialize Express app
@@ -14,6 +16,9 @@ const server = http.createServer(app);
 
 // Middleware to parse JSON requests
 app.use(express.json());
+
+// Enable CORS
+app.use(cors());
 
 // Initialize Socket.IO
 const io = new Server(server, {
@@ -33,8 +38,10 @@ mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
 const mqttService = new MQTTService(io);
 const socketController = new SocketController(io);
 
-// Use employee routes
+// Use routes
 app.use('/api/employees', employeeRoutes);
+app.use('/api/positions', positionRoutes);
+app.use('/api/departments', departmentRoutes);
 
 // Connect to MQTT broker
 mqttService.connect();
@@ -49,7 +56,6 @@ const SOCKET_IO_PORT = 3001;
 server.listen(SOCKET_IO_PORT, () => {
   console.log(`Socket.IO server is listening on port ${SOCKET_IO_PORT}`);
 });
-
 
 // Export the Socket.IO instance if needed in other modules (like mqtt.service.js)
 module.exports = { app, server, io }; 
