@@ -2,6 +2,7 @@ const Employee = require('../models/employee.model');
 const Checkin = require('../models/checkin.model');
 const Department = require('../models/department.model');
 const Position = require('../models/position.model');
+const formatDateCustom = require('../utils/date.utils');
 
 const employeeService = {
   getEmployeeByEmployeeId: async (employeeId) => {
@@ -104,7 +105,7 @@ const employeeService = {
         .populate('department', 'name')
         .populate('position', 'name');
       console.log("employee = ", employee);
-      
+
       if (!employee) {
         return {
           status: 404,
@@ -126,6 +127,8 @@ const employeeService = {
       };
     }
   },
+
+  
 
   getLateEmployees: async (date, departmentId) => {
     try {
@@ -149,7 +152,7 @@ const employeeService = {
         targetDate.getUTCDate(),
         0, 0, 0, 0
       ));
-      
+
       const endOfDay = new Date(Date.UTC(
         targetDate.getFullYear(),
         targetDate.getUTCMonth(),
@@ -167,7 +170,7 @@ const employeeService = {
         1,
         0, 0, 0, 0
       ));
-      
+
       const endOfMonth = new Date(Date.UTC(
         targetDate.getFullYear(),
         targetDate.getUTCMonth() + 1,
@@ -225,46 +228,54 @@ const employeeService = {
 
       // Get all check-ins for the specified day
       const employeeIds = employees.map(emp => emp.employeeId);
-      const employeeShiftMap= new Map(employees.map(emp => [emp.employeeId, emp.shift]));
-      const employeeMap = new Map(employees.map(emp => [emp.employeeId, emp])); 
+      const employeeShiftMap = new Map(employees.map(emp => [emp.employeeId, emp.shift]));
+      const employeeMap = new Map(employees.map(emp => [emp.employeeId, emp]));
       console.log("Employee IDs to search:", employeeIds);
 
       // First, let's check what check-in records exist
       const allCheckins = await Checkin.find({
         employeeId: { $in: employeeIds }
-      }).sort({ timestamp: 1 }) ;
+      }).sort({ timestamp: 1 });
 
-      const mapEmployeeCheckins = new Map();
       const mapCountLate = new Map();
+      const mapEmployeeCheckinsLate = new Map();
       allCheckins.forEach(checkin => {
-        if (!mapEmployeeCheckins.has(checkin.employeeId)) {
-          mapEmployeeCheckins.set(checkin.employeeId, []);
+        console.log("timestamp = ", checkin.timestamp);
+        const date = formatDateCustom(checkin.timestamp)
+        const key = `${checkin.employeeId}_${date}`;
+        if (!mapEmployeeCheckinsLate.has(key)) {
+          console.log("key = ", key);
+          mapEmployeeCheckinsLate.set(key, []);
         }
-        mapEmployeeCheckins.get(checkin.employeeId).push(checkin);
+        mapEmployeeCheckinsLate.get(key).push(checkin);
       });
-  
-      // tổng số buổi muộn
-      mapEmployeeCheckins.forEach((checkins, employeeId) => {
-        let countLate = 0;
-        for(let i = 0; i < checkins.length - 1; i+=2) {
-          const checkin = checkins[i];
-          const checkinTime = new Date(checkin.timestamp);
+      console.log("mapEmployeeCheckinsLate = ", mapEmployeeCheckinsLate);
+
+      mapEmployeeCheckinsLate.forEach((checkins, key) => {
+        const employeeId = key.split('_')[0];
+        const date = key.split('_')[1];
+        console.log("checkins = ", checkins.length);
+        console.log("date = ", date);
+
+        if (checkins.length > 1 || (checkins.length === 1 && date === formatDateCustom(new Date()))) {
+          const checkinTime = checkins[0].timestamp;
           const shift = employeeShiftMap.get(employeeId);
-          console.log("checkinTime: ", checkinTime , "shift: ", shift, "fullDayEarlyLeaveTime: ", fullDayEarlyLeaveTime);
+          console.log("shift = ", shift, " employeeId = ", employeeId);
+          
           const morningLateTime = new Date(Date.UTC(
             checkinTime.getFullYear(),
             checkinTime.getUTCMonth(),
             checkinTime.getUTCDate(),
             8, 0, 0, 0
           )); // 12:00 GMT+7
-    
+
           const afternoonLateTime = new Date(Date.UTC(
             checkinTime.getFullYear(),
             checkinTime.getUTCMonth(),
             checkinTime.getUTCDate(),
             13, 0, 0, 0
           )); // 17:00 GMT+7
-    
+
           const fullLateTime = new Date(Date.UTC(
             checkinTime.getFullYear(),
             checkinTime.getUTCMonth(),
@@ -273,94 +284,89 @@ const employeeService = {
           )); // 17:00 GMT+7
           if (shift === 'Cả ngày') {
             if (checkinTime > fullLateTime) {
-              countLate++;
+              mapCountLate.set(employeeId, (mapCountLate.get(employeeId) || 0) + 1);
             }
           } else if (shift === 'Ca sáng') {
             if (checkinTime > morningLateTime) {
-              countLate++;
+              mapCountLate.set(employeeId, (mapCountLate.get(employeeId) || 0) + 1);
             }
           } else if (shift === 'Ca chiều') {
             if (checkinTime > afternoonLateTime) {
-              countLate++;
+              mapCountLate.set(employeeId, (mapCountLate.get(employeeId) || 0) + 1);
             }
           }
         }
-        mapCountLate.set(employeeId, countLate);
-      });
 
+      });
       console.log("mapCountLate: ", mapCountLate);
 
       const mapEmployeeLateToday = new Map();
       // muộn hôm nay
       employeeIds.forEach(employeeId => {
-        if (mapEmployeeCheckins.has(employeeId)) {
-            const checkinsList = mapEmployeeCheckins.get(employeeId);
-            var isLate = false;
-            var tmpCheckIn = null;
-            for(let i = 0; i < checkinsList.length - 1; i+=2) {
-              const checkin = checkinsList[i];
-              const checkinTime = new Date(checkin.timestamp);     
-              const shift = employeeShiftMap.get(employeeId); 
-              console.log("checkinTime: ", checkinTime , "shift: ", shift, "startOfDay: ", startOfDay, "endOfDay: ", endOfDay);
-              if(checkinTime >= startOfDay && checkinTime <= endOfDay) {
-                tmpCheckIn = checkin;
-                if(shift === 'Cả ngày') {
-                  if(checkinTime > fullDayEarlyLeaveTime) {
-                    isLate = true;
-                  }
-                } else if (shift === 'Ca sáng') {
-                  if(checkinTime > morningShiftEarlyLeaveTime) {
-                    isLate = true;
-                  }
-                } else if (shift === 'Ca chiều') {
-                  if(checkinTime > afternoonShiftEarlyLeaveTime) {
-                    isLate = true;
-                  }
-                }
-                break;
+        const key = `${employeeId}_${formatDateCustom(targetDate)}`;
+        console.log("key = ", key,  "mapEmployeeCheckinsLate = ", mapEmployeeCheckinsLate.get(key));
+        if (mapEmployeeCheckinsLate.has(key)) {
+          const checkinsList = mapEmployeeCheckinsLate.get(key);
+          const checkinTime = checkinsList[0].timestamp;
+          const shift = employeeShiftMap.get(employeeId);
+          let isLate = false;
+          let tmpCheckIn = null;
+          console.log("checkinTime: ", checkinTime, "shift: ", shift, "startOfDay: ", startOfDay, "endOfDay: ", endOfDay);
+            tmpCheckIn = checkinsList[0];
+            if (shift === 'Cả ngày') {
+              if (checkinTime > fullDayEarlyLeaveTime) {
+                isLate = true;
+              }
+            } else if (shift === 'Ca sáng') {
+              if (checkinTime > morningShiftEarlyLeaveTime) {
+                isLate = true;
+              }
+            } else if (shift === 'Ca chiều') {
+              if (checkinTime > afternoonShiftEarlyLeaveTime) {
+                isLate = true;
               }
             }
-            if(isLate) {
+            if (isLate) {
               mapEmployeeLateToday.set(employeeId, tmpCheckIn);
             }
         }
       });
       console.log("mapEmployeeLateToday: ", mapEmployeeLateToday);
- 
+
       const employeeLateTodayList = Array.from(mapEmployeeLateToday.values())
-      .map(checkin => {
-        const employee = employeeMap.get(checkin.employeeId);
-        const checkinTime = new Date(checkin.timestamp);
-        const timePolicy = employee.shift === 'Cả ngày' ? new Date(Date.UTC(
-          checkinTime.getFullYear(),
-          checkinTime.getUTCMonth(),
-          checkinTime.getUTCDate(),
-          8, 0, 0, 0
-        )) : employee.shift === 'Ca sáng' ?  new Date(Date.UTC(
-          checkinTime.getFullYear(),
-          checkinTime.getUTCMonth(),
-          checkinTime.getUTCDate(),
-          8, 0, 0, 0
-        )) : new Date(Date.UTC(
-          checkinTime.getFullYear(),
-          checkinTime.getMonth(),
-          checkinTime.getDate(), 13, 0, 0, 0));
-        const lateMinutes = Math.round((checkinTime - timePolicy) / (1000 * 60));
-        return {
-          "Id": employee.employeeId,  
-          "employeeName": employee.fullName,
-          "department": employee.department ? employee.department.name : 'N/A',
-          "position": employee.position ? employee.position.name : 'N/A',
-          "shift": employee.shift,
-          "checkinTime": checkinTime.toLocaleTimeString('vi-VN', { 
-            hour: '2-digit',   
-            minute: '2-digit',
-            hour12: false 
-          }),
-          "lateMinutes": `${lateMinutes} phút`,
-          "countLate": mapCountLate.get(checkin.employeeId) || 0
-        };
-      });
+        .map(checkin => {
+          const employee = employeeMap.get(checkin.employeeId);
+          const checkinTime = new Date(checkin.timestamp);
+          const timePolicy = employee.shift === 'Cả ngày' ? new Date(Date.UTC(
+            checkinTime.getFullYear(),
+            checkinTime.getUTCMonth(),
+            checkinTime.getUTCDate(),
+            8, 0, 0, 0
+          )) : employee.shift === 'Ca sáng' ? new Date(Date.UTC(
+            checkinTime.getFullYear(),
+            checkinTime.getUTCMonth(),
+            checkinTime.getUTCDate(),
+            8, 0, 0, 0
+          )) : new Date(Date.UTC(
+            checkinTime.getFullYear(),
+            checkinTime.getMonth(),
+            checkinTime.getDate(), 13, 0, 0, 0));
+          const lateMinutes = Math.round((checkinTime - timePolicy) / (1000 * 60));
+          return {
+            "Id": employee.employeeId,
+            "employeeName": employee.fullName,
+            "department": employee.department ? employee.department.name : 'N/A',
+            "position": employee.position ? employee.position.name : 'N/A',
+            "shift": employee.shift,
+            "checkinTime": checkinTime.toLocaleTimeString('vi-VN', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            }),
+            "lateMinutes": `${lateMinutes} phút`,
+            "countLate": mapCountLate.get(checkin.employeeId) || 0
+          };
+        });
 
       return {
         status: 200,
@@ -403,7 +409,7 @@ const employeeService = {
         targetDate.getUTCDate(),
         0, 0, 0, 0
       ));
-      
+
       const endOfDay = new Date(Date.UTC(
         targetDate.getFullYear(),
         targetDate.getUTCMonth(),
@@ -421,7 +427,7 @@ const employeeService = {
         1,
         0, 0, 0, 0
       ));
-      
+
       const endOfMonth = new Date(Date.UTC(
         targetDate.getFullYear(),
         targetDate.getUTCMonth() + 1,
@@ -451,7 +457,7 @@ const employeeService = {
         17, 0, 0, 0
       )); // 17:00 GMT+7
 
-      
+
       // Step 1: Get all employees by department
       let employees;
       if (departmentId) {
@@ -476,7 +482,7 @@ const employeeService = {
 
       // Step 2: Get all check-ins for these employees
       const employeeIds = employees.map(emp => emp.employeeId);
-      const employeeShiftMap= new Map(employees.map(emp => [emp.employeeId, emp.shift]));
+      const employeeShiftMap = new Map(employees.map(emp => [emp.employeeId, emp.shift]));
       console.log("Employee IDs to search:", employeeIds);
 
       const allCheckins = await Checkin.find({
@@ -492,7 +498,7 @@ const employeeService = {
         }
         mapEmployeeCheckins.get(checkin.employeeId).push(checkin);
       });
-  
+
       // Create a map of employee data for easy lookup
       const employeeMap = new Map(employees.map(emp => [emp.employeeId, emp]));
 
@@ -504,51 +510,51 @@ const employeeService = {
         if (mapEmployeeCheckins.has(employeeId)) {
           const checkinsList = mapEmployeeCheckins.get(employeeId);
           let countEarlyLeave = 0;
-          for(let i = 0; i < checkinsList.length - 1; i+=2) {
-              const checkin = checkinsList[i];
-              const checkinTime = new Date(checkin.timestamp);
-              const shift = employeeShiftMap.get(employeeId);
-              console.log("checkinTime: ", checkinTime , "shift: ", shift, "fullDayEarlyLeaveTime: ", fullDayEarlyLeaveTime);
-              const morningLateTime = new Date(Date.UTC(
-                checkinTime.getFullYear(),
-                checkinTime.getUTCMonth(),
-                checkinTime.getUTCDate(),
-                12, 0, 0, 0
-              )); 
-        
-              const afternoonLateTime = new Date(Date.UTC(
-                checkinTime.getFullYear(),
-                checkinTime.getUTCMonth(),
-                checkinTime.getUTCDate(),
-                17, 0, 0, 0
-              )); // 17:00 GMT+7
-        
-              const fullLateTime = new Date(Date.UTC(
-                checkinTime.getFullYear(),
-                checkinTime.getUTCMonth(),
-                checkinTime.getUTCDate(),
-                17, 0, 0, 0
-              )); // 17:00 GMT+7
+          for (let i = 0; i < checkinsList.length - 1; i += 2) {
+            const checkin = checkinsList[i];
+            const checkinTime = new Date(checkin.timestamp);
+            const shift = employeeShiftMap.get(employeeId);
+            console.log("checkinTime: ", checkinTime, "shift: ", shift, "fullDayEarlyLeaveTime: ", fullDayEarlyLeaveTime);
+            const morningLateTime = new Date(Date.UTC(
+              checkinTime.getFullYear(),
+              checkinTime.getUTCMonth(),
+              checkinTime.getUTCDate(),
+              12, 0, 0, 0
+            ));
 
-              if (shift === 'Cả ngày') {
-                if (checkinTime < fullLateTime) {
-                  countEarlyLeave++;
-                }
-              } else if (shift === 'Ca sáng') {
-                if (checkinTime < morningLateTime) {
-                  countEarlyLeave++;
-                }
-              } else if (shift === 'Ca chiều') {
-                if (checkinTime < afternoonLateTime) {
-                  countEarlyLeave++;
-                }
+            const afternoonLateTime = new Date(Date.UTC(
+              checkinTime.getFullYear(),
+              checkinTime.getUTCMonth(),
+              checkinTime.getUTCDate(),
+              17, 0, 0, 0
+            )); // 17:00 GMT+7
+
+            const fullLateTime = new Date(Date.UTC(
+              checkinTime.getFullYear(),
+              checkinTime.getUTCMonth(),
+              checkinTime.getUTCDate(),
+              17, 0, 0, 0
+            )); // 17:00 GMT+7
+
+            if (shift === 'Cả ngày') {
+              if (checkinTime < fullLateTime) {
+                countEarlyLeave++;
+              }
+            } else if (shift === 'Ca sáng') {
+              if (checkinTime < morningLateTime) {
+                countEarlyLeave++;
+              }
+            } else if (shift === 'Ca chiều') {
+              if (checkinTime < afternoonLateTime) {
+                countEarlyLeave++;
               }
             }
-            mapCountEarlyLeave.set(employeeId, countEarlyLeave);
           }
+          mapCountEarlyLeave.set(employeeId, countEarlyLeave);
+        }
       });
       console.log("mapCountEarlyLeave: ", mapCountEarlyLeave);
-      
+
       // Sớm hôm nay
       const mapEmployeeEarlyLeaveToday = new Map();
       employeeIds.forEach(employeeId => {
@@ -556,73 +562,73 @@ const employeeService = {
           const checkinsList = mapEmployeeCheckins.get(employeeId);
           var isEarlyLeave = false;
           var tmpCheckIn = null;
-          for(let i = 0; i < checkinsList.length - 1; i+=2) {
+          for (let i = 0; i < checkinsList.length - 1; i += 2) {
             const checkin = checkinsList[i];
-            const checkinTime = new Date(checkin.timestamp);     
-            const shift = employeeShiftMap.get(employeeId); 
-            console.log("checkinTime: ", checkinTime , "shift: ", shift, "startOfDay: ", startOfDay, "endOfDay: ", endOfDay);
-            if(checkinTime >= startOfDay && checkinTime <= endOfDay) {
+            const checkinTime = new Date(checkin.timestamp);
+            const shift = employeeShiftMap.get(employeeId);
+            console.log("checkinTime: ", checkinTime, "shift: ", shift, "startOfDay: ", startOfDay, "endOfDay: ", endOfDay);
+            if (checkinTime >= startOfDay && checkinTime <= endOfDay) {
               tmpCheckIn = checkin;
-              if(shift === 'Cả ngày') {
-                if(checkinTime < fullDayEarlyLeaveTime) {
+              if (shift === 'Cả ngày') {
+                if (checkinTime < fullDayEarlyLeaveTime) {
                   isEarlyLeave = true;
                 }
               } else if (shift === 'Ca sáng') {
-                if(checkinTime < morningShiftEarlyLeaveTime) {
+                if (checkinTime < morningShiftEarlyLeaveTime) {
                   isEarlyLeave = true;
                 }
               } else if (shift === 'Ca chiều') {
-                if(checkinTime < afternoonShiftEarlyLeaveTime) {
-                  isEarlyLeave = true;    
+                if (checkinTime < afternoonShiftEarlyLeaveTime) {
+                  isEarlyLeave = true;
                 }
               }
               break;
             }
           }
-          if(isEarlyLeave) {
+          if (isEarlyLeave) {
             mapEmployeeEarlyLeaveToday.set(employeeId, tmpCheckIn);
           }
         }
       });
       console.log("mapEmployeeEarlyLeaveToday: ", mapEmployeeEarlyLeaveToday);
-      
+
       const employeeEarlyLeaveTodayList = Array.from(mapEmployeeEarlyLeaveToday.values())
-      .map(checkin => {
-        const employee = employeeMap.get(checkin.employeeId);
-        const checkinTime = new Date(checkin.timestamp);
-        const timePolicy = employee.shift === 'Cả ngày' ? new Date(Date.UTC(
-          checkinTime.getFullYear(),
-          checkinTime.getUTCMonth(),
-          checkinTime.getUTCDate(),
-          17, 0, 0, 0
-        )) : employee.shift === 'Ca sáng' ?  new Date(Date.UTC(
-          checkinTime.getFullYear(),
-          checkinTime.getUTCMonth(),
-          checkinTime.getUTCDate(),
-          12, 0, 0, 0
-        )) : new Date(Date.UTC(
-          checkinTime.getFullYear(),
-          checkinTime.getUTCMonth(),
-          checkinTime.getUTCDate(), 17, 0, 0, 0));
-        console.log("timePolicy: ", timePolicy);
-        console.log("checkinTime: ", checkinTime);
-        console.log("timePolicy - checkinTime: ", timePolicy - checkinTime);
-        const earlyMinutes = Math.round((timePolicy - checkinTime) / (1000 * 60));
-        return {
-          "Id": employee.employeeId,  
-          "employeeName": employee.fullName,
-          "department": employee.department ? employee.department.name : 'N/A',
-          "position": employee.position ? employee.position.name : 'N/A',
-          "shift": employee.shift,
-          "checkinTime": checkinTime.toLocaleTimeString('vi-VN', { 
-            hour: '2-digit',   
-            minute: '2-digit',
-            hour12: false 
-          }),
-          "earlyMinutes": `${earlyMinutes} phút`,
-          "countEarlyLeave": mapCountEarlyLeave.get(checkin.employeeId) || 0
-        };
-      });
+        .map(checkin => {
+          const employee = employeeMap.get(checkin.employeeId);
+          const checkinTime = new Date(checkin.timestamp);
+          const timePolicy = employee.shift === 'Cả ngày' ? new Date(Date.UTC(
+            checkinTime.getFullYear(),
+            checkinTime.getUTCMonth(),
+            checkinTime.getUTCDate(),
+            17, 0, 0, 0
+          )) : employee.shift === 'Ca sáng' ? new Date(Date.UTC(
+            checkinTime.getFullYear(),
+            checkinTime.getUTCMonth(),
+            checkinTime.getUTCDate(),
+            12, 0, 0, 0
+          )) : new Date(Date.UTC(
+            checkinTime.getFullYear(),
+            checkinTime.getUTCMonth(),
+            checkinTime.getUTCDate(), 17, 0, 0, 0));
+          console.log("timePolicy: ", timePolicy);
+          console.log("checkinTime: ", checkinTime);
+          console.log("timePolicy - checkinTime: ", timePolicy - checkinTime);
+          const earlyMinutes = Math.round((timePolicy - checkinTime) / (1000 * 60));
+          return {
+            "Id": employee.employeeId,
+            "employeeName": employee.fullName,
+            "department": employee.department ? employee.department.name : 'N/A',
+            "position": employee.position ? employee.position.name : 'N/A',
+            "shift": employee.shift,
+            "checkinTime": checkinTime.toLocaleTimeString('vi-VN', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            }),
+            "earlyMinutes": `${earlyMinutes} phút`,
+            "countEarlyLeave": mapCountEarlyLeave.get(checkin.employeeId) || 0
+          };
+        });
 
       return {
         status: 200,
@@ -664,7 +670,7 @@ const employeeService = {
         targetDate.getDate(),
         0, 0, 0, 0
       ));
-      
+
       const endOfDay = new Date(Date.UTC(
         targetDate.getFullYear(),
         targetDate.getUTCMonth(),
@@ -682,7 +688,7 @@ const employeeService = {
         1,
         0, 0, 0, 0
       ));
-      
+
       const endOfMonth = new Date(Date.UTC(
         targetDate.getFullYear(),
         targetDate.getUTCMonth() + 1,
@@ -744,7 +750,7 @@ const employeeService = {
       const employeeIds = employees.map(emp => emp.employeeId);
       console.log("Employee IDs to search:", employeeIds);
       const employeeMap = new Map(employees.map(emp => [emp.employeeId, emp]));
-      const employeeShiftMap= new Map(employees.map(emp => [emp.employeeId, emp.shift]));
+      const employeeShiftMap = new Map(employees.map(emp => [emp.employeeId, emp.shift]));
 
       const allCheckins = await Checkin.find({
         employeeId: { $in: employeeIds }
@@ -764,51 +770,51 @@ const employeeService = {
         if (mapEmployeeCheckins.has(employeeId)) {
           const checkinsList = mapEmployeeCheckins.get(employeeId);
           let countOvertime = 0;
-          for(let i = 0; i < checkinsList.length - 1; i+=2) {
-              const checkin = checkinsList[i];
-              const checkinTime = new Date(checkin.timestamp);
-              const shift = employeeShiftMap.get(employeeId);
-              console.log("checkinTime: ", checkin.timestamp, ' = ', checkin.timestamp.getMonth(),' / ', checkin.timestamp.getDate(), "shift: ", shift);
-              
-              const morningLateTime = new Date(Date.UTC(
-                checkinTime.getFullYear(),
-                checkinTime.getUTCMonth(),
-                checkinTime.getUTCDate(),
-                12, 0, 0, 0
-              )); 
-        
-              const afternoonLateTime = new Date(Date.UTC(
-                checkinTime.getFullYear(),
-                checkinTime.getUTCMonth(),
-                checkinTime.getUTCDate(),
-                17, 0, 0, 0
-              )); // 17:00 GMT+7
-        
-              const fullLateTime = new Date(Date.UTC(
-                checkinTime.getFullYear(),
-                checkinTime.getUTCMonth(), 
-                checkinTime.getUTCDate(),
-                17, 0, 0, 0
-              )); // 17:00 GMT+7
+          for (let i = 0; i < checkinsList.length - 1; i += 2) {
+            const checkin = checkinsList[i];
+            const checkinTime = new Date(checkin.timestamp);
+            const shift = employeeShiftMap.get(employeeId);
+            console.log("checkinTime: ", checkin.timestamp, ' = ', checkin.timestamp.getMonth(), ' / ', checkin.timestamp.getDate(), "shift: ", shift);
 
-              console.log("checkinTime: ", checkinTime, "fullLateTime: ", fullLateTime);
-              console.log("checkinTime - fullLateTime: ", checkinTime - fullLateTime);
-              
-              if (shift === 'Cả ngày') {
-                if (checkinTime > fullLateTime) {
-                  countOvertime += (checkinTime - fullLateTime) / (1000 * 60);
-                }
-              } else if (shift === 'Ca sáng') {
-                if (checkinTime > morningLateTime) {
-                  countOvertime += (checkinTime - morningLateTime) / (1000 * 60);
-                }
-              } else if (shift === 'Ca chiều') {
-                if (checkinTime > afternoonLateTime) {
-                  countOvertime += (checkinTime - afternoonLateTime) / (1000 * 60);
-                }
+            const morningLateTime = new Date(Date.UTC(
+              checkinTime.getFullYear(),
+              checkinTime.getUTCMonth(),
+              checkinTime.getUTCDate(),
+              12, 0, 0, 0
+            ));
+
+            const afternoonLateTime = new Date(Date.UTC(
+              checkinTime.getFullYear(),
+              checkinTime.getUTCMonth(),
+              checkinTime.getUTCDate(),
+              17, 0, 0, 0
+            )); // 17:00 GMT+7
+
+            const fullLateTime = new Date(Date.UTC(
+              checkinTime.getFullYear(),
+              checkinTime.getUTCMonth(),
+              checkinTime.getUTCDate(),
+              17, 0, 0, 0
+            )); // 17:00 GMT+7
+
+            console.log("checkinTime: ", checkinTime, "fullLateTime: ", fullLateTime);
+            console.log("checkinTime - fullLateTime: ", checkinTime - fullLateTime);
+
+            if (shift === 'Cả ngày') {
+              if (checkinTime > fullLateTime) {
+                countOvertime += (checkinTime - fullLateTime) / (1000 * 60);
+              }
+            } else if (shift === 'Ca sáng') {
+              if (checkinTime > morningLateTime) {
+                countOvertime += (checkinTime - morningLateTime) / (1000 * 60);
+              }
+            } else if (shift === 'Ca chiều') {
+              if (checkinTime > afternoonLateTime) {
+                countOvertime += (checkinTime - afternoonLateTime) / (1000 * 60);
               }
             }
-            mapCountOvertime.set(employeeId, countOvertime);
+          }
+          mapCountOvertime.set(employeeId, countOvertime);
         }
       });
       console.log("mapCountOvertime: ", mapCountOvertime);
@@ -820,30 +826,30 @@ const employeeService = {
           const checkinsList = mapEmployeeCheckins.get(employeeId);
           var isOvertime = false;
           var tmpCheckIn = null;
-          for(let i = 0; i < checkinsList.length - 1; i+=2) {
+          for (let i = 0; i < checkinsList.length - 1; i += 2) {
             const checkin = checkinsList[i];
-            const checkinTime = new Date(checkin.timestamp);     
-            const shift = employeeShiftMap.get(employeeId); 
-            console.log("checkinTime: ", checkinTime , "shift: ", shift, "startOfDay: ", startOfDay, "endOfDay: ", endOfDay);
-            if(checkinTime >= startOfDay && checkinTime <= endOfDay) {
+            const checkinTime = new Date(checkin.timestamp);
+            const shift = employeeShiftMap.get(employeeId);
+            console.log("checkinTime: ", checkinTime, "shift: ", shift, "startOfDay: ", startOfDay, "endOfDay: ", endOfDay);
+            if (checkinTime >= startOfDay && checkinTime <= endOfDay) {
               tmpCheckIn = checkin;
-              if(shift === 'Cả ngày') {
-                if(checkinTime > fullDayEndTime) {
+              if (shift === 'Cả ngày') {
+                if (checkinTime > fullDayEndTime) {
                   isOvertime = true;
                 }
               } else if (shift === 'Ca sáng') {
-                if(checkinTime > morningShiftEndTime) {
+                if (checkinTime > morningShiftEndTime) {
                   isOvertime = true;
                 }
               } else if (shift === 'Ca chiều') {
-                if(checkinTime > afternoonShiftEndTime) {
-                  isOvertime = true;    
+                if (checkinTime > afternoonShiftEndTime) {
+                  isOvertime = true;
                 }
               }
               break;
             }
           }
-          if(isOvertime) {
+          if (isOvertime) {
             mapEmployeeOvertimeToday.set(employeeId, tmpCheckIn);
           }
         }
@@ -851,40 +857,40 @@ const employeeService = {
 
 
       const employeeOvertimeTodayList = Array.from(mapEmployeeOvertimeToday.values())
-      .map(checkin => {
-        const employee = employeeMap.get(checkin.employeeId);
-        const checkinTime = new Date(checkin.timestamp);
-        const timePolicy = employee.shift === 'Cả ngày' ? new Date(Date.UTC(
-          checkinTime.getFullYear(),  
-          checkinTime.getUTCMonth(),
-          checkinTime.getUTCDate(),
-          17, 0, 0, 0
-        )) : employee.shift === 'Ca sáng' ? new Date(Date.UTC(
-          checkinTime.getFullYear(),
-          checkinTime.getUTCMonth(),   
-          checkinTime.getUTCDate(),
-          12, 0, 0, 0
-        )) : new Date(Date.UTC(
-          checkinTime.getFullYear(),
-          checkinTime.getUTCMonth(),
-          checkinTime.getUTCDate(), 17, 0, 0, 0));     
+        .map(checkin => {
+          const employee = employeeMap.get(checkin.employeeId);
+          const checkinTime = new Date(checkin.timestamp);
+          const timePolicy = employee.shift === 'Cả ngày' ? new Date(Date.UTC(
+            checkinTime.getFullYear(),
+            checkinTime.getUTCMonth(),
+            checkinTime.getUTCDate(),
+            17, 0, 0, 0
+          )) : employee.shift === 'Ca sáng' ? new Date(Date.UTC(
+            checkinTime.getFullYear(),
+            checkinTime.getUTCMonth(),
+            checkinTime.getUTCDate(),
+            12, 0, 0, 0
+          )) : new Date(Date.UTC(
+            checkinTime.getFullYear(),
+            checkinTime.getUTCMonth(),
+            checkinTime.getUTCDate(), 17, 0, 0, 0));
 
-        const overtimeMinutes = Math.round((checkinTime - timePolicy) / (1000 * 60));
-        return {
-          "Id": employee.employeeId,
-          "employeeName": employee.fullName,
-          "department": employee.department ? employee.department.name : 'N/A',
-          "position": employee.position ? employee.position.name : 'N/A',
-          "shift": employee.shift,
-          "checkinTime": checkinTime.toLocaleTimeString('vi-VN', { 
-            hour: '2-digit',   
-            minute: '2-digit',
-            hour12: false 
-          }),
-          "overtimeMinutes": `${overtimeMinutes} phút`,
-          "countOvertime": mapCountOvertime.get(checkin.employeeId) || 0
-        };
-      });
+          const overtimeMinutes = Math.round((checkinTime - timePolicy) / (1000 * 60));
+          return {
+            "Id": employee.employeeId,
+            "employeeName": employee.fullName,
+            "department": employee.department ? employee.department.name : 'N/A',
+            "position": employee.position ? employee.position.name : 'N/A',
+            "shift": employee.shift,
+            "checkinTime": checkinTime.toLocaleTimeString('vi-VN', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            }),
+            "overtimeMinutes": `${overtimeMinutes} phút`,
+            "countOvertime": mapCountOvertime.get(checkin.employeeId) || 0
+          };
+        });
 
       console.log("employeeOvertimeTodayList: ", employeeOvertimeTodayList);
 
