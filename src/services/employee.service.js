@@ -2,7 +2,7 @@ const Employee = require('../models/employee.model');
 const Checkin = require('../models/checkin.model');
 const Department = require('../models/department.model');
 const Position = require('../models/position.model');
-const formatDateCustom = require('../utils/date.utils');
+const { formatDateCustom, formatMinutesToHoursAndMinutes } = require('../utils/date.utils');
 
 const employeeService = {
   getEmployeeByEmployeeId: async (employeeId) => {
@@ -968,7 +968,7 @@ const employeeService = {
               minute: '2-digit',
               hour12: false
             }),
-            "overtimeMinutes": `${overtimeMinutes} phút`,
+            "overtimeMinutes": formatMinutesToHoursAndMinutes(overtimeMinutes),
             "countOvertime": mapCountOvertime.get(checkin.employeeId) || 0
           };
         });

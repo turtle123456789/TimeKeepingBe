@@ -6,4 +6,20 @@ function formatDateCustom(date) {
   return `${year}-${month}-${day}`;
 }
 
-module.exports = formatDateCustom; 
+function formatMinutesToHoursAndMinutes(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  
+  if (hours === 0) {
+    return `${remainingMinutes} phút`;
+  } else if (remainingMinutes === 0) {
+    return `${hours} giờ`;
+  } else {
+    return `${hours} giờ ${remainingMinutes} phút`;
+  }
+}
+
+module.exports = {
+  formatDateCustom,
+  formatMinutesToHoursAndMinutes
+}; 
