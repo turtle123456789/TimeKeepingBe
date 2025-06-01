@@ -103,7 +103,8 @@ const employeeService = {
       const employee = await Employee.findOne({ employeeId: employeeIdString })
         .populate('department', 'name')
         .populate('position', 'name');
-
+      console.log("employee = ", employee);
+      
       if (!employee) {
         return {
           status: 404,

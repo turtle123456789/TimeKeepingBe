@@ -2,6 +2,7 @@ const mqtt = require('mqtt');
 const config = require('../config/mqtt.config');
 const employeeController = require('../controllers/employee.controller'); // Import employeeController
 const employeeService = require('../services/employee.service'); // Import employeeService
+const { parse } = require('date-fns');
 
 class MQTTService {
   constructor(io) {
@@ -26,9 +27,8 @@ class MQTTService {
     });
 
     this.client.on('message', (topic, message) => {
-      console.log("topic : ", topic, " messages : ", message);
-      
-      // this.handleMessage(topic, message)
+      // console.log("topic : ", topic, " messages : ", message);
+      this.handleMessage(topic, message)
     });
     this.client.on('error', (error) => this.handleError(error));
   }
@@ -47,22 +47,26 @@ class MQTTService {
     try {
       const messageString = message.toString();
       const eventData = JSON.parse(messageString);
-      console.log("evenData = ", eventData);
 
       const processedData = await employeeController.processDeviceEventData(eventData);
-      processedData.status = "checkin"
-
-      switch (processedData.status) {
+      console.log("processedData = ", processedData);
+      switch (processedData.data.status) {
         case 'đăng ký':
           // Chuẩn bị dữ liệu đăng ký
+          let registrationDate = "";
+          if(processedData.data.timestamp){
+            const [date, time] = processedData.data.timestamp.split(" ");
+            const [year, month, day] = date.split("-").map(Number);
+            const [hours, minutes, seconds] = time.split(":").map(Number);
+            registrationDate =  new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds));
+          }else {
+            registrationDate = new Date().toISOString();
+          }
+          console.log("registrationDate =", registrationDate);
           const registrationData = {
-            ...processedData,
-            employeeType: processedData.employeeType || "fulltime",
-            registrationDate: processedData.timestamp || new Date().toISOString(),
-            faceData: {
-              faceId: processedData.faceBase64,
-              registrationDate: processedData.timestamp || new Date().toISOString()
-            }
+            ...processedData.data, 
+            employeeType: processedData.data.employeeType,
+            registrationDate: registrationDate
           };
 
           // Xử lý đăng ký thông qua controller
@@ -93,16 +97,11 @@ class MQTTService {
         case 'cập nhật':
           // Chuẩn bị dữ liệu cập nhật
           const updateData = {
-            employeeId: processedData.employeeId,
-            fullName: processedData.employeeName,
-            department: processedData.department,
-            position: processedData.position,
-            employeeType: processedData.employeeType,
-            faceData: processedData.faceBase64 ? {
-              faceId: processedData.faceBase64,
-              updateDate: processedData.timestamp || new Date().toISOString()
-            } : undefined,
-            updateDate: processedData.timestamp || new Date().toISOString()
+            employeeId: processedData.data.employeeId,
+            fullName: processedData.data.employeeName,
+            faceEmbedding: processedData.data.faceEmbedding,
+            faceBase64 : processedData.data.faceBase64,
+           
           };
 
           // Xử lý cập nhật thông qua controller

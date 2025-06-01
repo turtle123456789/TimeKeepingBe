@@ -1,3 +1,4 @@
+const e = require('express');
 const employeeService = require('../services/employee.service');
 const fs = require('fs');
 const path = require('path');
@@ -192,7 +193,7 @@ const employeeController = {
 
   // Hàm xử lý dữ liệu sự kiện từ thiết bị (tái sử dụng bởi worker và HTTP)
   processDeviceEventData: async (eventData) => {
-    if (!eventData.deviceId || !eventData.employeeName || !eventData.employeeId || !eventData.timestamp || !eventData.faceBase64) {
+    if (!eventData.deviceId || !eventData.employeeName || !eventData.employeeId ) {
       return {
         status: 400,
         message: 'Missing required fields.',
@@ -200,12 +201,10 @@ const employeeController = {
       };
     }
 
-    const { deviceId, employeeName, employeeId, timestamp, faceBase64 } = eventData;
-    let imagePath = "";
-
+    const { deviceId, employeeName, employeeId,department,position,timestamp, status, faceBase64 } = eventData;
     return {
       status: 200,
-      data: { deviceId, employeeName, employeeId, timestamp, faceBase64, imagePath },
+      data: {deviceId, employeeName, employeeId,department,position,timestamp, status, faceBase64 },
       message: 'Data processed successfully'
     };
   },
@@ -240,6 +239,7 @@ const employeeController = {
   handleRegistrationSave: async (registrationData) => {
     try {
       // Validate dữ liệu đăng ký
+      console.log("registrationData = ", registrationData);
       if (!registrationData.employeeId || !registrationData.employeeName) {
         return {
           status: 400,
@@ -250,7 +250,7 @@ const employeeController = {
 
       // Kiểm tra nhân viên đã tồn tại
       const existingEmployee = await employeeService.getEmployeeByEmployeeIdString(registrationData.employeeId);
-      if (existingEmployee) {
+      if (existingEmployee.data) {
         return {
           status: 409,
           message: 'Employee already exists',
@@ -262,11 +262,12 @@ const employeeController = {
       const newEmployee = await employeeService.createEmployee({
         employeeId: registrationData.employeeId,
         fullName: registrationData.employeeName,
-        department: registrationData.department || "Chưa phân phòng ban",
-        position: registrationData.position || "Chưa phân chức vụ",
-        employeeType: registrationData.employeeType || "fulltime",
+        department: registrationData.department ,
+        position: registrationData.position ,
+        shift: registrationData.shift,
         registrationDate: registrationData.registrationDate,
-        faceData: registrationData.faceData
+        faceImage: registrationData.faceBase64,
+        imageAvatar: registrationData.faceEmbedding
       });
 
       console.log('New employee registered:', newEmployee);
@@ -298,7 +299,7 @@ const employeeController = {
 
       // Tìm nhân viên cần cập nhật
       const existingEmployee = await employeeService.getEmployeeByEmployeeIdString(updateData.employeeId);
-      if (!existingEmployee) {
+      if (!existingEmployee.data) {
         return {
           status: 404,
           message: 'Employee not found',
@@ -309,11 +310,16 @@ const employeeController = {
       // Cập nhật thông tin
       const updatedEmployee = await employeeService.updateEmployee(updateData.employeeId, {
         fullName: updateData.fullName,
-        department: updateData.department,
-        position: updateData.position,
-        employeeType: updateData.employeeType,
-        faceData: updateData.faceData,
-        updateDate: updateData.updateDate
+        faceImage: updateData.faceBase64,
+        imageAvatar: updateData.faceEmbeddin,
+        department: existingEmployee.data.department,
+        position: existingEmployee.data.position,
+        shift: existingEmployee.data.shift,
+        registrationDate: existingEmployee.data.registrationDate,
+        email: existingEmployee.data.email,
+        phone: existingEmployee.data.phone,
+        status: existingEmployee.data.status,
+        image34: existingEmployee.data.image34
       });
 
       console.log('Employee updated:', updatedEmployee);

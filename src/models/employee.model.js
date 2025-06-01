@@ -12,29 +12,28 @@ const employeeSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
     match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
   phone: {
     type: String,
-    required: true,
+    required: false,
     match: [/^[0-9]{10}$/, 'Please enter a valid phone number']
   },
   department: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Department',
-    required: true
+    required: false
   },
   position: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Position',
-    required: true
+    required: false
   },
   shift: {
     type: String,
-    enum: ['Cả ngày', 'Ca sáng', 'Ca chiều'],
-    default: 'Cả ngày'
+    default: ''
   },
   registrationDate: {
     type: Date,
