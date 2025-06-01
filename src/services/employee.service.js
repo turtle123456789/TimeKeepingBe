@@ -754,105 +754,188 @@ const employeeService = {
         employeeId: { $in: employeeIds }
       }).sort({ timestamp: -1 });
 
-      const mapEmployeeCheckins = new Map();
+      const mapEmployeeOvertime = new Map();
       allCheckins.forEach(checkin => {
-        if (!mapEmployeeCheckins.has(checkin.employeeId)) {
-          mapEmployeeCheckins.set(checkin.employeeId, []);
+        console.log("timestamp = ", checkin.timestamp);
+        const date = formatDateCustom(checkin.timestamp)
+        const key = `${checkin.employeeId}_${date}`;
+        if (!mapEmployeeOvertime.has(key)) {
+          console.log("key = ", key);
+          mapEmployeeOvertime.set(key, []);
         }
-        mapEmployeeCheckins.get(checkin.employeeId).push(checkin);
+        mapEmployeeOvertime.get(key).push(checkin);
       });
+      console.log("mapEmployeeOvertime = ", mapEmployeeOvertime);
+
 
       const mapCountOvertime = new Map();
       // Tông thừa giờ cả tháng
-      employeeIds.forEach(employeeId => {
-        if (mapEmployeeCheckins.has(employeeId)) {
-          const checkinsList = mapEmployeeCheckins.get(employeeId);
-          let countOvertime = 0;
-          for (let i = 0; i < checkinsList.length - 1; i += 2) {
-            const checkin = checkinsList[i];
-            const checkinTime = new Date(checkin.timestamp);
-            const shift = employeeShiftMap.get(employeeId);
-            console.log("checkinTime: ", checkin.timestamp, ' = ', checkin.timestamp.getMonth(), ' / ', checkin.timestamp.getDate(), "shift: ", shift);
+      // employeeIds.forEach(employeeId => {
+      //   if (mapEmployeeCheckins.has(employeeId)) {
+      //     const checkinsList = mapEmployeeCheckins.get(employeeId);
+      //     let countOvertime = 0;
+      //     for (let i = 0; i < checkinsList.length - 1; i += 2) {
+      //       const checkin = checkinsList[i];
+      //       const checkinTime = new Date(checkin.timestamp);
+      //       const shift = employeeShiftMap.get(employeeId);
+      //       console.log("checkinTime: ", checkin.timestamp, ' = ', checkin.timestamp.getMonth(), ' / ', checkin.timestamp.getDate(), "shift: ", shift);
 
-            const morningLateTime = new Date(Date.UTC(
-              checkinTime.getFullYear(),
-              checkinTime.getUTCMonth(),
-              checkinTime.getUTCDate(),
-              12, 0, 0, 0
-            ));
+      //       const morningLateTime = new Date(Date.UTC(
+      //         checkinTime.getFullYear(),
+      //         checkinTime.getUTCMonth(),
+      //         checkinTime.getUTCDate(),
+      //         12, 0, 0, 0
+      //       ));
 
-            const afternoonLateTime = new Date(Date.UTC(
-              checkinTime.getFullYear(),
-              checkinTime.getUTCMonth(),
-              checkinTime.getUTCDate(),
-              17, 0, 0, 0
-            )); // 17:00 GMT+7
+      //       const afternoonLateTime = new Date(Date.UTC(
+      //         checkinTime.getFullYear(),
+      //         checkinTime.getUTCMonth(),
+      //         checkinTime.getUTCDate(),
+      //         17, 0, 0, 0
+      //       )); // 17:00 GMT+7
 
-            const fullLateTime = new Date(Date.UTC(
-              checkinTime.getFullYear(),
-              checkinTime.getUTCMonth(),
-              checkinTime.getUTCDate(),
-              17, 0, 0, 0
-            )); // 17:00 GMT+7
+      //       const fullLateTime = new Date(Date.UTC(
+      //         checkinTime.getFullYear(),
+      //         checkinTime.getUTCMonth(),
+      //         checkinTime.getUTCDate(),
+      //         17, 0, 0, 0
+      //       )); // 17:00 GMT+7
 
-            console.log("checkinTime: ", checkinTime, "fullLateTime: ", fullLateTime);
-            console.log("checkinTime - fullLateTime: ", checkinTime - fullLateTime);
+      //       console.log("checkinTime: ", checkinTime, "fullLateTime: ", fullLateTime);
+      //       console.log("checkinTime - fullLateTime: ", checkinTime - fullLateTime);
 
-            if (shift === 'Cả ngày') {
-              if (checkinTime > fullLateTime) {
-                countOvertime += (checkinTime - fullLateTime) / (1000 * 60);
-              }
-            } else if (shift === 'Ca sáng') {
-              if (checkinTime > morningLateTime) {
-                countOvertime += (checkinTime - morningLateTime) / (1000 * 60);
-              }
-            } else if (shift === 'Ca chiều') {
-              if (checkinTime > afternoonLateTime) {
-                countOvertime += (checkinTime - afternoonLateTime) / (1000 * 60);
-              }
+      //       if (shift === 'Cả ngày') {
+      //         if (checkinTime > fullLateTime) {
+      //           countOvertime += (checkinTime - fullLateTime) / (1000 * 60);
+      //         }
+      //       } else if (shift === 'Ca sáng') {
+      //         if (checkinTime > morningLateTime) {
+      //           countOvertime += (checkinTime - morningLateTime) / (1000 * 60);
+      //         }
+      //       } else if (shift === 'Ca chiều') {
+      //         if (checkinTime > afternoonLateTime) {
+      //           countOvertime += (checkinTime - afternoonLateTime) / (1000 * 60);
+      //         }
+      //       }
+      //     }
+      //     mapCountOvertime.set(employeeId, countOvertime);
+      //   }
+      // });
+
+      mapEmployeeOvertime.forEach((checkins, key) => {
+        const employeeId = key.split('_')[0];
+        const date = key.split('_')[1];
+        console.log("checkins = ", checkins.length);
+        console.log("date = ", date);
+
+        if (checkins.length > 1 || (checkins.length === 1 && date === formatDateCustom(new Date()))) {
+          const checkinTime = checkins[0].timestamp;
+          const shift = employeeShiftMap.get(employeeId);
+          // console.log("shift = ", shift, " employeeId = ", employeeId);
+          
+          const morningLateTime = new Date(Date.UTC(
+            checkinTime.getFullYear(),
+            checkinTime.getUTCMonth(),
+            checkinTime.getUTCDate(),
+            12, 0, 0, 0
+          )); // 12:00 GMT+7
+
+          const afternoonLateTime = new Date(Date.UTC(
+            checkinTime.getFullYear(),
+            checkinTime.getUTCMonth(),
+            checkinTime.getUTCDate(),
+            17, 0, 0, 0
+          )); // 17:00 GMT+7
+
+          const fullLateTime = new Date(Date.UTC(
+            checkinTime.getFullYear(),
+            checkinTime.getUTCMonth(),
+            checkinTime.getUTCDate(),
+            17, 0, 0, 0
+          )); // 17:00 GMT+7
+          if (shift === 'Cả ngày') {
+            if (checkinTime > fullLateTime) {
+              mapCountOvertime.set(employeeId, (mapCountOvertime.get(employeeId) || 0) + 1);
+            }
+          } else if (shift === 'Ca sáng') {
+            if (checkinTime > morningLateTime) {
+              mapCountOvertime.set(employeeId, (mapCountOvertime.get(employeeId) || 0) + 1);
+            }
+          } else if (shift === 'Ca chiều') {
+            if (checkinTime > afternoonLateTime) {
+              mapCountOvertime.set(employeeId, (mapCountOvertime.get(employeeId) || 0) + 1);
             }
           }
-          mapCountOvertime.set(employeeId, countOvertime);
         }
+
       });
       console.log("mapCountOvertime: ", mapCountOvertime);
 
       // Thừa giờ hôm nay
       const mapEmployeeOvertimeToday = new Map();
+      // employeeIds.forEach(employeeId => {
+      //   if (mapEmployeeCheckins.has(employeeId)) {
+      //     const checkinsList = mapEmployeeCheckins.get(employeeId);
+      //     var isOvertime = false;
+      //     var tmpCheckIn = null;
+      //     for (let i = 0; i < checkinsList.length - 1; i += 2) {
+      //       const checkin = checkinsList[i];
+      //       const checkinTime = new Date(checkin.timestamp);
+      //       const shift = employeeShiftMap.get(employeeId);
+      //       console.log("checkinTime: ", checkinTime, "shift: ", shift, "startOfDay: ", startOfDay, "endOfDay: ", endOfDay);
+      //       if (checkinTime >= startOfDay && checkinTime <= endOfDay) {
+      //         tmpCheckIn = checkin;
+      //         if (shift === 'Cả ngày') {
+      //           if (checkinTime > fullDayEndTime) {
+      //             isOvertime = true;
+      //           }
+      //         } else if (shift === 'Ca sáng') {
+      //           if (checkinTime > morningShiftEndTime) {
+      //             isOvertime = true;
+      //           }
+      //         } else if (shift === 'Ca chiều') {
+      //           if (checkinTime > afternoonShiftEndTime) {
+      //             isOvertime = true;
+      //           }
+      //         }
+      //         break;
+      //       }
+      //     }
+      //     if (isOvertime) {
+      //       mapEmployeeOvertimeToday.set(employeeId, tmpCheckIn);
+      //     }
+      //   }
+      // });
+
       employeeIds.forEach(employeeId => {
-        if (mapEmployeeCheckins.has(employeeId)) {
-          const checkinsList = mapEmployeeCheckins.get(employeeId);
-          var isOvertime = false;
-          var tmpCheckIn = null;
-          for (let i = 0; i < checkinsList.length - 1; i += 2) {
-            const checkin = checkinsList[i];
-            const checkinTime = new Date(checkin.timestamp);
-            const shift = employeeShiftMap.get(employeeId);
-            console.log("checkinTime: ", checkinTime, "shift: ", shift, "startOfDay: ", startOfDay, "endOfDay: ", endOfDay);
-            if (checkinTime >= startOfDay && checkinTime <= endOfDay) {
-              tmpCheckIn = checkin;
-              if (shift === 'Cả ngày') {
-                if (checkinTime > fullDayEndTime) {
-                  isOvertime = true;
-                }
-              } else if (shift === 'Ca sáng') {
-                if (checkinTime > morningShiftEndTime) {
-                  isOvertime = true;
-                }
-              } else if (shift === 'Ca chiều') {
-                if (checkinTime > afternoonShiftEndTime) {
-                  isOvertime = true;
-                }
+        const key = `${employeeId}_${formatDateCustom(targetDate)}`;
+        console.log("key = ", key,  "mapEmployeeOvertime = ", mapEmployeeOvertime.get(key));
+        if (mapEmployeeOvertime.has(key)) {
+          const checkinsList = mapEmployeeOvertime.get(key);
+          const checkinTime = checkinsList[0].timestamp;
+          const shift = employeeShiftMap.get(employeeId);
+          let isOvertime = false;
+          let tmpCheckIn = null;
+          // console.log("checkinTime: ", checkinTime, "shift: ", shift);
+            tmpCheckIn = checkinsList[0];
+            if (shift === 'Cả ngày') {
+              if (checkinTime > fullDayEndTime) {
+                isOvertime = true;
               }
-              break;
+            } else if (shift === 'Ca sáng') {
+              if (checkinTime > morningShiftEndTime) {
+                isOvertime = true;
+              }
+            } else if (shift === 'Ca chiều') {
+              if (checkinTime > afternoonShiftEndTime) {
+                isOvertime = true;
+              }
             }
-          }
-          if (isOvertime) {
-            mapEmployeeOvertimeToday.set(employeeId, tmpCheckIn);
-          }
+            if (isOvertime) {
+              mapEmployeeOvertimeToday.set(employeeId, tmpCheckIn);
+            }
         }
       });
-
 
       const employeeOvertimeTodayList = Array.from(mapEmployeeOvertimeToday.values())
         .map(checkin => {
