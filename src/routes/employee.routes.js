@@ -23,4 +23,8 @@ router.get('/early', employeeController.getEarlyLeaveEmployees);
 // GET /api/employees/department - Get employees by department and date
 router.get('/department', employeeController.getEmployeesByDepartmentAndDate);
 
+// New routes for attendance tracking
+router.get('/overtime', employeeController.getOvertimeEmployees);
+router.post('/test-checkin', employeeController.createTestCheckin);
+
 module.exports = router;

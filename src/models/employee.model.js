@@ -31,6 +31,11 @@ const employeeSchema = new mongoose.Schema({
     ref: 'Position',
     required: true
   },
+  shift: {
+    type: String,
+    enum: ['Cả ngày', 'Ca sáng', 'Ca chiều'],
+    default: 'Cả ngày'
+  },
   registrationDate: {
     type: Date,
     default: Date.now

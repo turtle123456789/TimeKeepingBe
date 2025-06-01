@@ -6,8 +6,7 @@ const checkinSchema = new mongoose.Schema({
     required: true
   },
   employeeId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Employee',
+    type: String,
     required: false
   },
   timestamp: {

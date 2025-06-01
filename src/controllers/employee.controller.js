@@ -334,33 +334,75 @@ const employeeController = {
 
   getLateEmployees: async (req, res) => {
     try {
-      const date = req.query.date; 
-      const departmentId = req.query.departmentId; 
-      const result = await employeeService.getLateEmployees(date, departmentId);
+      const { date, departmentId } = req.query;
       
-      res.status(result.status).json({
-        message: result.message,
-        data: result.data
-      });
+      // Convert date to GMT+7
+      let targetDate = date ? new Date(date) : new Date();      
+      const result = await employeeService.getLateEmployees(targetDate, departmentId);
+      res.status(result.status).json(result);
     } catch (error) {
-      console.error('Error in employeeController.getLateEmployees:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({
+        status: 500,
+        message: 'Error getting late employees: ' + error.message,
+        data: null
+      });
     }
   },
 
   getEarlyLeaveEmployees: async (req, res) => {
     try {
-      const date = req.query.date; 
-      const departmentId = req.query.departmentId; 
-      const result = await employeeService.getEarlyLeaveEmployees(date, departmentId);
+      const { date, departmentId } = req.query;
       
-      res.status(result.status).json({
-        message: result.message,
-        data: result.data
-      });
+      // Convert date to GMT+7
+      let targetDate = date ? new Date(date) : new Date();
+      console.log("targetDateNow: ", targetDate);
+      
+      const result = await employeeService.getEarlyLeaveEmployees(targetDate, departmentId);
+      res.status(result.status).json(result);
     } catch (error) {
-      console.error('Error in employeeController.getEarlyLeaveEmployees:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({
+        status: 500,
+        message: 'Error getting early leave employees: ' + error.message,
+        data: null
+      });
+    }
+  },
+
+  getOvertimeEmployees: async (req, res) => {
+    try {
+      const { date, departmentId } = req.query;
+      let targetDate = date ? new Date(date) : new Date();
+      const result = await employeeService.getOvertimeEmployees(targetDate, departmentId);
+      res.status(result.status).json(result);
+    } catch (error) {
+      res.status(500).json({
+        status: 500,
+        message: 'Error getting overtime employees: ' + error.message,
+        data: null
+      });
+    }
+  },
+
+  createTestCheckin: async (req, res) => {
+    try {
+      const { employeeId, checkinStatus, timestamp } = req.body;
+      
+      if (!employeeId || !checkinStatus) {
+        return res.status(400).json({
+          status: 400,
+          message: 'Employee ID and check-in status are required',
+          data: null
+        });
+      }
+
+      const result = await employeeService.createTestCheckin(employeeId, checkinStatus, timestamp);
+      res.status(result.status).json(result);
+    } catch (error) {
+      res.status(500).json({
+        status: 500,
+        message: 'Error creating test check-in: ' + error.message,
+        data: null
+      });
     }
   },
 
