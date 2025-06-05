@@ -32,7 +32,7 @@ const io = new Server(server, {
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/time_keeping';
 mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .catch(err => console.error('MongoDB connection error:',v                                                                                                                                    mm err));
 
 // Initialize services and controllers
 const mqttService = new MQTTService(io);
