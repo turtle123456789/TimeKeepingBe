@@ -29,11 +29,10 @@ const io = new Server(server, {
 });
 
 // Connect to MongoDB
-const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/time_keeping';
-mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
+const mongoURI = process.env.MONGO_URI || 'mongodb+srv://quyPham:Trongface1@cluster0.slqbuua.mongodb.net/myShop?retryWrites=true&w=majority&appName=Cluster0';
+mongoose.connect(mongoURI)
   .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:',v                                                                                                                                    mm err));
-
+  .catch(err => console.error('MongoDB connection error:', err));
 // Initialize services and controllers
 const mqttService = new MQTTService(io);
 const socketController = new SocketController(io);

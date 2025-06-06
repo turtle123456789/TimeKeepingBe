@@ -145,14 +145,14 @@ class MQTTService {
         try {
           // Sử dụng processedData.employeeId string để tìm employee
           const employee = await employeeService.getEmployeeByEmployeeIdString(processedData.employeeId);
-          console.log("vaoooo ->>");
+          console.log("vaoooo ->>", processedData);
           if (employee) {
             const frontendData = {
-              employeeId: employee.employeeId,
-              fullName: employee.fullName,
-              position: employee.position,
-              department: employee.department,
-              employeeType: employee.employeeType,
+              employeeId: processedData.data.employeeId,
+              fullName: processedData.data.employeeName,
+              position: processedData.data.position,
+              department: processedData.data.department,
+              employeeType: processedData.data.employeeType,
               status: processedData.status,
               timestamp: processedData.timestamp
             };
