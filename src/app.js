@@ -17,9 +17,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Routes
-app.use('/api/employees', require('./routes/employee.route'));
+app.use('/api/employees', require('./routes/employee.routes'));
 app.use('/api/departments', require('./routes/department.routes'));
 app.use('/api/positions', require('./routes/position.routes'));
+app.use('/api/checkins', require('./routes/checkin.routes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

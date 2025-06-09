@@ -8,6 +8,7 @@ const SocketController = require('./controllers/socket.controller');
 const employeeRoutes = require('./routes/employee.routes'); // Import employee routes
 const positionRoutes = require('./routes/position.routes'); // Import position routes
 const departmentRoutes = require('./routes/department.routes'); // Import department routes
+const checkinRoutes = require('./routes/checkin.routes'); // Import checkin routes
 const cors = require('cors'); // Import cors for handling cross-origin requests
 
 // Initialize Express app
@@ -42,7 +43,7 @@ const socketController = new SocketController(io);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/positions', positionRoutes);
 app.use('/api/departments', departmentRoutes);
-
+app.use('/api/checkins', checkinRoutes);
 // Connect to MQTT broker
 mqttService.connect();
 
