@@ -144,17 +144,17 @@ class MQTTService {
       (async () => {
         try {
           // Sử dụng processedData.employeeId string để tìm employee
-          const employee = await employeeService.getEmployeeByEmployeeIdString(processedData.employeeId);
-          console.log("vaoooo ->>", processedData);
-          if (employee) {
+          const employee = await employeeService.getEmployeeByEmployeeIdString(processedData.data.employeeId);
+          console.log("vaoooo ->> ",employee);
+          if (employee.data) {
             const frontendData = {
-              employeeId: processedData.data.employeeId,
-              fullName: processedData.data.employeeName,
-              position: processedData.data.position,
-              department: processedData.data.department,
-              employeeType: processedData.data.employeeType,
-              status: processedData.status,
-              timestamp: processedData.timestamp
+              employeeId: employee.data.employeeId,
+              fullName: employee.data.fullName,
+              position: employee.data.position.name,
+              department: employee.data.department.name,
+              employeeType: employee.data.employeeType,
+              status: processedData.data.status,
+              timestamp: processedData.data.timestamp
             };
             // Gửi thông tin lên frontend qua Socket.IO
             if (this.io) {
@@ -168,13 +168,13 @@ class MQTTService {
             // console.log(`Employee with employeeId ${processedData.employeeId} not found for frontend update.`);
             // for testing 
             const frontendData = {
-              employeeId: processedData.employeeId,
-              fullName: processedData.employeeName,
+              employeeId: processedData.data.employeeId,
+              fullName: processedData.data.employeeName,
               position: "Người ngoài công ty",
               department: "Người ngoài công ty",
               employeeType: "unknown",
-              status: processedData.status,
-              timestamp: processedData.timestamp,
+              status: processedData.data.status,
+              timestamp: processedData.data.timestamp,
             };
             // Gửi thông tin lên frontend qua Socket.IO
             if (this.io) {

@@ -6,7 +6,7 @@ const positionController = {
   createPosition: async (req, res) => {
     try {
       const positionData = req.body;
-
+      console.log(JSON.stringify(positionData));
       if (!positionData.name) {
         return res.status(400).json({
           status: 400,
@@ -24,9 +24,23 @@ const positionController = {
         });
       }
 
-     
       let departmentId = null;
-      if (positionData.departmentName) {
+      
+      // Handle department ID if provided directly
+      if (positionData.department) {
+        departmentId = positionData.department;
+        // Validate if department exists
+        const department = await departmentService.getDepartmentById(departmentId);
+        if (!department) {
+          return res.status(404).json({
+            status: 404,
+            message: `Department with ID "${departmentId}" not found`,
+            data: null
+          });
+        }
+      }
+      // Handle department name if provided
+      else if (positionData.departmentName) {
         const department = await departmentService.getDepartmentByName(positionData.departmentName);
         if (!department) {
           return res.status(404).json({
@@ -36,6 +50,14 @@ const positionController = {
           });
         }
         departmentId = department._id;
+      }
+      // If neither department nor departmentName is provided
+      else {
+        return res.status(400).json({
+          status: 400,
+          message: 'Either department ID or department name is required',
+          data: null
+        });
       }
 
       const existingPosition = await positionService.getPositionByName(positionData.name, departmentId);

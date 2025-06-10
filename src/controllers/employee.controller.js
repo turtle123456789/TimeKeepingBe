@@ -2,12 +2,14 @@ const e = require('express');
 const employeeService = require('../services/employee.service');
 const fs = require('fs');
 const path = require('path');
+const Employee = require('../models/employee.model');
+const { displayEmployeeImages } = require('../utils/imageUtils');
 
 const employeeController = {
   registerEmployee: async (req, res) => {
     try {
       const employeeData = req.body;
-
+      console.log("employeeData = ", employeeData);
       // Validate required fields
       if (!employeeData.employeeId || !employeeData.fullName || !employeeData.email || !employeeData.phone) {
         return res.status(400).json({
@@ -68,7 +70,7 @@ const employeeController = {
     try {
       const { employeeId } = req.params;
       const updateData = req.body;
-
+      console.log("updateData = ", updateData);
       // Validate email format if provided
       if (updateData.email) {
         const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
@@ -166,8 +168,9 @@ const employeeController = {
   getEmployeeById: async (req, res) => {
     try {
       const { employeeId } = req.params;
+      console.log("employeeId = ", employeeId);
       const employee = await employeeService.getEmployeeByEmployeeId(employeeId);
-      
+      console.log("employee = ", employee);
       if (!employee) {
         return res.status(404).json({
           status: 404,
@@ -213,12 +216,19 @@ const employeeController = {
     try {
       const faceIdForCheckin = processedData.faceBase64 || 'N/A';
 
+      const [date, time] = processedData.data.timestamp.split(" ");
+      const [year, month, day] = date.split("-").map(Number);
+      const [hours, minutes, seconds] = time.split(":").map(Number);
+      const timestampData =  new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds));
+
+      console.log("timestampData = ", timestampData);
+
       const checkinRecord = await employeeService.recordCheckin(
-        processedData.deviceId,
-        processedData.employeeId,
-        processedData.timestamp,
+        processedData.data.deviceId,
+        processedData.data.employeeId,
+        timestampData,
         faceIdForCheckin,
-        processedData.status || "check in"
+        processedData.data.status || "checkin"
       );
       console.log('Check-in record created:', checkinRecord);
       return {
@@ -493,6 +503,65 @@ const employeeController = {
         message: error.message,
         data: null
       });
+    }
+  },
+
+  getMonthlyStatistics: async (req, res) => {
+    try {
+      const { employeeId } = req.params;
+      const { year, month } = req.query;
+
+      // Validate year and month
+      if (!year || !month) {
+        return res.status(400).json({
+          status: 400,
+          message: 'Year and month are required',
+          data: null
+        });
+      }
+
+      const yearNum = parseInt(year);
+      const monthNum = parseInt(month);
+
+      if (isNaN(yearNum) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({
+          status: 400,
+          message: 'Invalid year or month',
+          data: null
+        });
+      }
+
+      const result = await employeeService.getMonthlyStatistics(employeeId, yearNum, monthNum);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error('Error in getMonthlyStatistics:', error);
+      return res.status(500).json({
+        status: 500,
+        message: error.message,
+        data: null
+      });
+    }
+  },
+
+  getEmployeeImages: async (req, res) => {
+    try {
+      const employeeId = req.params.employeeId;
+      const employee = await Employee.findOne({ employeeId });
+
+      if (!employee) {
+        return res.status(404).json({ message: 'Employee not found' });
+      }
+
+      // Decode and save images
+      const imagePaths = displayEmployeeImages(employee);
+
+      res.json({
+        message: 'Images processed successfully',
+        imagePaths
+      });
+    } catch (error) {
+      console.error('Error processing employee images:', error);
+      res.status(500).json({ message: 'Error processing images', error: error.message });
     }
   },
 };
